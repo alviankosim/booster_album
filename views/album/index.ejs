@@ -42,6 +42,7 @@
             class="w3-bar-item w3-button w3-padding w3-hide-large">CLOSE</a>
         <a href="#" onclick="onClickAddNew()" class="w3-bar-item w3-light-grey w3-button">ADD NEW ALBUMS</a>
         <a href="#" onclick="w3_close()" class="w3-bar-item w3-button">ALBUMS</a>
+        <a href="#" onclick="handleSearchAlbum()" class="w3-bar-item w3-button">FIND ALBUMS</a>
         <a href="#about" onclick="w3_close()" class="w3-bar-item w3-button">ABOUT AUTHOR</a>
         <a href="#info" onclick="w3_close()" class="w3-bar-item w3-button">REMINDER</a>
     </nav>
@@ -62,6 +63,11 @@
         <!-- Push down content on small screens -->
         <div class="w3-hide-large" style="margin-top:83px"></div>
 
+        <!-- Caption -->
+        <div id="searchWrapper" style="display: none;">
+            <h4>Currently searching for "<b><span id="searchCapt"></span></b>"</h4>
+            <button onclick="handleResetSearch()">Reset Search</button>
+        </div>
         <!-- Photo grid -->
         <div class="w3-row" id="photoGrid"></div>
 
@@ -77,6 +83,7 @@
             <div class="w3-modal-content w3-animate-zoom w3-center w3-transparent w3-padding-64">
                 <img id="img01" class="w3-image">
                 <p id="caption"></p>
+                <audio id="quranAudio" src=""></audio>
             </div>
             <div id="editAlbum" class="w3-content" style="max-width:600px;display: none;">
                 <h4 class="w3-center"><b>Edit Album</b></h4>
@@ -94,6 +101,20 @@
                             <option value="verse.jpg">Verse</option>
                             <option value="quotes.jpg">Quotes</option>
                         </select>
+                    </div>
+                    <div id="surahEdit" class="w3-bar">
+                        <!-- <div class="w3-section"> -->
+                            <label>Surah</label>
+                            <select class="w3-input w3-border select2" data-placeholder="Select a surah" name="surahEdit">
+                                <option></option>
+                            </select>
+                        <!-- </div> -->
+                        <!-- <div class="w3-section"> -->
+                            <label>Ayah</label>
+                            <select class="w3-input w3-border select2" data-placeholder="Select an ayah" name="ayahEdit">
+                                <option></option>
+                            </select>
+                        <!-- </div> -->
                     </div>
                     <button type="button" id="editSubmitBtn" class="w3-button w3-block w3-grey w3-margin-bottom">Edit
                         Current Album</button>

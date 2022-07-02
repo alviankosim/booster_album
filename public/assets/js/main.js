@@ -1,4 +1,7 @@
+var albums = [];
 var surahs = [];
+var ayahs = [];
+
 // Script to open and close sidebar
 function w3_open() {
     document.getElementById("mySidebar").style.display = "block";
@@ -8,6 +11,21 @@ function w3_open() {
 function w3_close() {
     document.getElementById("mySidebar").style.display = "none";
     document.getElementById("myOverlay").style.display = "none";
+}
+
+function handleSearchAlbum()
+{
+    let search = prompt("Find the desired keyword", "Sabar");
+    if (search != null) {
+        $('#searchWrapper').show(150);
+        $('#searchCapt').html(search);
+        fetchAlbum(search);
+    }
+}
+
+function handleResetSearch(){
+    $('#searchWrapper').hide();
+    fetchAlbum();
 }
 
 // Modal Image Gallery
@@ -20,6 +38,14 @@ function onClick(element) {
 
     var captionText = document.getElementById("caption");
     captionText.innerHTML = element.alt;
+
+    // filter to get current selected
+    let daid = element.getAttribute('data-id');
+    let found = albums.filter((item) => (item._id == daid))[0];
+    if (found?.image == 'verse.jpg') {
+        fetchAudioAyah(found?.ayah);
+        return;
+    }
 
     let utterThis = new SpeechSynthesisUtterance(element.alt);
     utterThis.lang = 'id-ID';
@@ -68,18 +94,57 @@ function renderAlbum(albums) {
     $('#photoGrid').html(daHTML);
 }
 
-function fetchAlbum() {
+function fetchAudioAyah(ayah)
+{
+    if(ayah){
+        // fetching from API
+        var settings = {
+            "url": "http://api.alquran.cloud/v1/ayah/"+ayah+"/ar.alafasy",
+            "method": "GET",
+            "timeout": 0,
+          };
+          
+        $.ajax(settings).done(function (response) {
+            if (response?.status == "OK") {
+                let audioda = response?.data?.audio;
+                $('#quranAudio').attr('src', audioda);
+
+                const audio = document.querySelector("audio");
+                audio.volume = 0.8;
+                audio.play();
+            }
+        });
+    }
+}
+
+function fetchAlbum(search = '') {
     $.ajax({
         method: "GET",
-        url: 'http://localhost:3501/album/api',
+        url: 'http://localhost:3501/album/api?search=' + search,
         dataType: "json",
     }).then(res => {
         if (res?.status) {
+            albums = res?.data || [];
             renderAlbum(res?.data || []);
         }
     }).fail(err => {
         console.error('Failed to get album data');
     });
+}
+
+function handleChangeSurah(){
+    $(document.body).on('change', 'select[name="surah"]', function(){
+        let currSelected = $(this).val();
+        if (currSelected) {
+            fetchAyat(currSelected);
+        }
+    })
+    $(document.body).on('change', 'select[name="surahEdit"]', function(){
+        let currSelected = $(this).val();
+        if (currSelected) {
+            fetchAyat(currSelected, true);
+        }
+    })
 }
 
 function fetchSurah() {
@@ -90,18 +155,61 @@ function fetchSurah() {
     }).then(res => {
         if (res?.status) {
             surahs = res?.data;
-            $('select[name="surah"]').select2("data", surahs.map(item => ({id: item._id, title: item.name})));
+            surahs.map(item => {
+                let data = {id: item._id, text: item.name};
+                var newOption = new Option(data.text, data.id, false, false);
+                $('select[name="surahEdit"]').append(newOption).trigger('change');
+            })
+            surahs.map(item => {
+                let data = {id: item._id, text: item.name};
+                var newOption = new Option(data.text, data.id, false, false);
+                $('select[name="surah"]').append(newOption).trigger('change');
+            })
+            // $('select[name="surah"]').select2("data", );
         }
     }).fail(err => {
         console.error('Failed to get album data');
     });
 }
 
-function handleValidateFormData(data) {
+function fetchAyat(daid, isEdit = false) {
+    $.ajax({
+        method: "GET",
+        url: 'http://localhost:3501/quran/api/' + daid,
+        dataType: "json",
+    }).then(res => {
+        if (res?.status) {
+            ayahs = res?.data;
+            // console.log({ayahs})
+            let daElementName = 'select[name="ayah"]';
+            if (isEdit) {
+                daElementName = 'select[name="ayahEdit"]';
+            }
+            $(daElementName).html('').select2({data: ayahs.map(item => {
+                let data = {id: item.number, text: 'Ayah '+ item.numberInSurah +' - ' + item.text};
+                return data;
+            })});
+            // $('select[name="surah"]').select2("data", );
+        }
+    }).fail(err => {
+        console.error('Failed to get album data');
+    });
+}
+
+function handleValidateFormData(data, isEdit = false) {
     let daReturn = true;
 
     if (!data?.caption) {
         daReturn = false;
+    }
+
+    if (data?.image == "verse.jpg") {
+        let selectedSurah = $(isEdit ? 'select[name="surahEdit"]' : 'select[name="surah"]').val();
+        let selectedAyah = $(isEdit ? 'select[name="ayahEdit"]' : 'select[name="ayah"]').val();
+
+        if (!selectedSurah || !selectedAyah) {
+            daReturn = false;
+        }
     }
 
     return daReturn;
@@ -121,6 +229,14 @@ function handleSubmit() {
                 'error'
             );
             return;
+        }
+
+        if (data?.image == 'verse.jpg') {
+            let selectedSurah = $('select[name="surah"]').val();
+            let selectedAyah = $('select[name="ayah"]').val();
+
+            data.surah = selectedSurah;
+            data.ayah = selectedAyah;
         }
 
         // ajax request
@@ -224,13 +340,21 @@ function handleEditSubmit() {
             image: $('select[name="edit_image"]').val()
         };
 
-        if (!handleValidateFormData(data)) {
+        if (!handleValidateFormData(data, true)) {
             Swal.fire(
                 'Attention!',
                 'Please fill valid information to the form!',
                 'error'
             );
             return;
+        }
+
+        if (data?.image == 'verse.jpg') {
+            let selectedSurah = $('select[name="surahEdit"]').val();
+            let selectedAyah = $('select[name="ayahEdit"]').val();
+
+            data.surah = selectedSurah;
+            data.ayah = selectedAyah;
         }
 
         // ajax request
@@ -285,6 +409,14 @@ function changeAlbumTypeAction(elementName = 'select[name="image"]'){
     }
 }
 
+function changeAlbumTypeEditAction(elementName = 'select[name="image"]'){
+    if ($(elementName).val() == 'verse.jpg') {
+        $('#surahEdit').show(250);
+    } else {
+        $('#surahEdit').hide(250);
+    }
+}
+
 function handleChangeAlbumType(){
     let elementName = 'select[name="image"]';
     let elementNameEdit = 'select[name="edit_image"]';
@@ -293,7 +425,7 @@ function handleChangeAlbumType(){
     });
     
     $(elementNameEdit).change(function(){
-        changeAlbumTypeAction(elementNameEdit);
+        changeAlbumTypeEditAction(elementNameEdit);
     });
 }
 
@@ -304,6 +436,7 @@ $(document).ready(function () {
     fetchAlbum();
     fetchSurah();
     changeAlbumTypeAction()
+    changeAlbumTypeEditAction()
 
     // listener
     handleSubmit();
@@ -311,4 +444,5 @@ $(document).ready(function () {
     handleEdit();
     handleDelete();
     handleChangeAlbumType();
+    handleChangeSurah();
 });

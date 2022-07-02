@@ -8,4 +8,9 @@ router
     .route('/api')
     .get(quranController.getSurahs)
 
+// get ayat
+router
+    .route('/api/:id')
+    .get(quranController.getAyahs)
+
 module.exports = router;

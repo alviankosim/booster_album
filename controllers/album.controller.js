@@ -3,8 +3,13 @@ const db = require("../lib/db");
 // api version
 const getAlbum = async (req, res) => {
     var dbo = db.getDb();
+    let search = req?.query?.search || '';
+    let dafilter = {};
+    if (search) {
+        dafilter = {'caption': {'$regex': search, '$options': 'i'}};
+    }
 
-    dbo.collection("albums").find({}).toArray(function (err, result) {
+    dbo.collection("albums").find(dafilter).toArray(function (err, result) {
         if (err) throw err;
 
         let responseApi = {
@@ -22,6 +27,11 @@ const addAlbum = async (req, res) => {
     let { caption, image } = req.body;
 
     let insertData = { caption, image };
+    if (image == 'verse.jpg') {
+        let { surah, ayah } = req.body;
+        insertData.surah = surah;
+        insertData.ayah = ayah;
+    }
     dbo.collection("albums").insertOne(insertData, function (err, result) {
         if (err) throw err;
 
@@ -42,8 +52,14 @@ const editAlbum = async (req, res) => {
     let { id } = req.params;
 
     let condition = { _id: string2ID(id) };
-    let updateData = { $set: { caption, image } };
-    dbo.collection("albums").updateOne(condition, updateData, function (err, result) {
+    let updateData = { caption, image };
+    if (image == 'verse.jpg') {
+        let { surah, ayah } = req.body;
+        updateData.surah = surah;
+        updateData.ayah = ayah;
+    }
+    let updateDataSet = { $set: updateData };
+    dbo.collection("albums").updateOne(condition, updateDataSet, function (err, result) {
         if (err) throw err;
 
         let responseApi = {
